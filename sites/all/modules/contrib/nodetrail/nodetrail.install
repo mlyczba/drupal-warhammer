@@ -1,0 +1,43 @@
+<?php
+
+/**
+ * Implementation of hook_install().
+ */
+function nodetrail_install() {
+  drupal_install_schema('nodetrail');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function nodetrail_uninstall() {
+  drupal_uninstall_schema('nodetrail');
+
+  db_query("DELETE FROM {variable} WHERE name LIKE 'nodetrail_%'");
+  cache_clear_all('variables', 'cache');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function nodetrail_schema() {
+  $schema['nodetrail'] = array(
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'mlid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0
+      ),
+    ),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+  );
+
+  return $schema;
+}

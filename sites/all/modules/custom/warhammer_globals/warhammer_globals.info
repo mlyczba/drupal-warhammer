@@ -1,0 +1,4 @@
+name = Warhammer globals
+description = Global functions of warhammer website
+package = Warhammer
+core = 6.x

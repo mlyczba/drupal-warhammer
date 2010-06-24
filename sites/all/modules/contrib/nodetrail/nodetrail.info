@@ -1,0 +1,11 @@
+; $Id: nodetrail.info,v 1.1 2009/03/14 12:19:15 davyvandenbremt Exp $
+name = Node Trail
+description = "Allows you to add nodes in menu without appearing in the menu."
+core = 6.x
+dependencies[] = menu
+; Information added by drupal.org packaging script on 2009-08-18
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "nodetrail"
+datestamp = "1250619794"
+

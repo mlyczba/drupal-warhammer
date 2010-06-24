@@ -1,0 +1,75 @@
+<?php
+function warhammer_globals_theme() {
+  return array(
+    'render_playfield' => array('arguments' => array('field')),
+  );
+}
+
+function warhammer_globals_menu() {
+  $items['line'] = array(
+    'title' => 'Lines',
+    'type' => MENU_NORMAL_ITEM,
+    'page callback' => 'warhammer_globals_draw_line',
+    'access arguments' => array('access content'),
+  );
+
+  return $items;
+}
+
+function warhammer_globals_draw_line($x1 = 10, $y1 = 15, $x2 = 1, $y2 = 5) {
+//  module_load_include('inc', 'clone', 'clone.pages');
+//  $new_nid = clone_node_save(1);
+//  echo $new_nid;
+//  die;
+//  print "Drawing line from $x1,$y1 to $x2,$y2<br>";
+  $playfield = array();
+  
+  $dy = $y2 - $y1;
+  $dx = $x2 - $x1;
+  if ($dy < 0) { $dy = -$dy;  $stepy = -1; } else { $stepy = 1; }
+  if ($dx < 0) { $dx = -$dx;  $stepx = -1; } else { $stepx = 1; }
+  $dy <<= 1; // dy is now 2*dy
+  $dx <<= 1; // dx is now 2*dx
+  
+  $playfield[$x1][$y1] = 'X';
+  if ($dx > $dy) {
+    $fraction = $dy - ($dx >> 1); // same as 2*dy - dx
+    while ($x1 != $x2) {
+      if ($fraction >= 0) {
+        $y1 += $stepy;
+        $fraction -= $dx; // same as fraction -= 2*dx
+      }
+      $x1 += $stepx;
+      $fraction += $dy; // same as fraction -= 2*dy
+      $playfield[$x1][$y1] = 'X';
+    }
+  } 
+  else {
+    $fraction = $dx - ($dy >> 1);
+    while ($y1 != $y2) {
+      if ($fraction >= 0) {
+        $x1 += $stepx;
+        $fraction -= $dy;
+      }
+      $y1 += $stepy;
+      $fraction += $dx;
+      $playfield[$x1][$y1] = 'X';
+    }
+  }
+  
+  for ($y = 0; $y<=47; $y++) {
+    for ($x = 0; $x<=47; $x++) {
+      $output .= theme('render_playfield', ($playfield[$x][$y] == 'X' ? '&nbsp;' : '&nbsp;'), 
+        $playfield[$x][$y] == 'X' ? 'map-cell-fill' : 'map-cell');
+      if ($x == 47) $output .= '<div style="clear: both;"></div>';   
+    }
+  }
+  return $output;
+}
+
+function theme_render_playfield($field, $style) {
+  //foreach($field as $tile) {
+    $output .= '<div class="' . $style . '">' . $field . '</div>';
+  //}
+  return $output;
+}

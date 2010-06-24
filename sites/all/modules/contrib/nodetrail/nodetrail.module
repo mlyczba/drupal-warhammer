@@ -1,0 +1,119 @@
+<?php
+
+/**
+ * Implementation of hook_enable()
+ *
+ * Default menutrails to run after core/og modules for fuller control
+ */
+function nodetrail_enable() {
+  db_query("UPDATE {system} SET weight = 1 WHERE name = 'nodetrail' AND type = 'module'");
+}
+
+/**
+ * Implementation of hook_form_alter(). Adds menu item fields to the node form.
+ */
+function nodetrail_form_alter(&$form, $form_state, $form_id) {
+  if (isset($form['#node']) && $form['#node']->type .'_node_form' == $form_id) {
+    $form['nodetrail'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Node Trail'),
+      '#collapsible' => TRUE,
+      '#collapsed' => !isset($form['#node']->nodetrail_parent),
+      '#weight' => -2,
+    );
+
+    // Generate a list of possible parents (not including this item or descendants).
+    $options = menu_parent_options(menu_get_menus(), array('mlid' => 0));
+    if ($form['#node']->nodetrail_parent) {
+      $menu_name = db_result(db_query("SELECT menu_name FROM {menu_links} WHERE mlid = %d", $form['#node']->nodetrail_parent));
+      $default = sprintf('%s:%s', $menu_name, $form['#node']->nodetrail_parent);
+    }
+    if (!isset($options[$default])) {
+      $default = sprintf('%s:0', variable_get('menu_default_node_menu', 'primary-links'));
+    }
+    $form['nodetrail']['nodetrail_parent'] = array(
+      '#type' => 'select',
+      '#title' => t('Parent item'),
+      '#default_value' => $default,
+      '#options' => $options,
+    );
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function nodetrail_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  switch ($op) {
+    case 'insert':
+    case 'update':
+      // decomposing parent parts
+      list($menu_name, $mlid) = explode(':', $node->nodetrail_parent);
+
+      // saving menu item
+      if ($mlid) {
+        if ($op == 'update') {
+          db_query("DELETE FROM {nodetrail} WHERE nid = %d", $node->nid);
+        }
+        db_query("INSERT INTO {nodetrail} (nid, mlid) VALUES (%d, %d)", $node->nid, $mlid);
+      }
+      break;
+    case 'delete':
+      db_query("DELETE FROM {nodetrail} WHERE nid = %d", $node->nid);
+      break;
+    case 'load':
+      $mlid = db_result(db_query("SELECT mlid FROM {nodetrail} WHERE nid = %d", $node->nid));
+      if ($mlid) {
+        $node->nodetrail_parent = $mlid;
+      }
+      break;
+    case 'view':
+      if ($a4 == TRUE) {
+        if ($node->nodetrail_parent) {
+          $href = db_result(db_query("SELECT link_path FROM {menu_links} WHERE mlid = %d", $node->nodetrail_parent));
+          $item = menu_get_item();
+          $item['href'] = $href;
+          menu_set_item(NULL, $item);
+          menu_set_active_item($href);
+
+          drupal_set_breadcrumb(nodetrail_get_breadcrumbs());
+        }
+      }
+      break;
+  }
+}
+
+/**
+ * Set Breadcrumbs based on active menu trail
+ */
+function nodetrail_get_breadcrumbs() {
+  $item = menu_get_item();
+  if (!$menu) {
+    // give first priority to the selected menu
+    $menu = variable_get('menutrails_menu', FALSE);
+    if (!$menu) {
+      $menu = db_result(db_query("SELECT menu_name FROM {menu_links} WHERE link_path = '%s' AND module = 'menu'", $item['href']));
+    }
+  }
+  $tree = menu_tree_page_data($menu);
+  $crumbs = array(l(t('Home'), '<front>'));
+  _nodetrail_recurse_crumbs($tree, $item, $crumbs);
+
+  return $crumbs;
+}
+
+function _nodetrail_recurse_crumbs($tree, $item, &$crumbs, $above = array()) {
+  foreach ($tree as $menu_item) {
+    if ($menu_item['link']['link_path'] == $item['href']) {
+      foreach($above as $trail_item) {
+        $crumbs[] = l($trail_item['link']['link_title'], $trail_item['link']['link_path']);
+      }
+      $crumbs[] = l($menu_item['link']['link_title'], $menu_item['link']['link_path']);
+      break;
+    }
+    if (is_array($menu_item['below'])) {
+      $above[] = $menu_item;
+      _nodetrail_recurse_crumbs($menu_item['below'], $item, $crumbs, $above);
+    }
+  }
+}
