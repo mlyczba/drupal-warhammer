@@ -163,7 +163,7 @@ function clone_node_save($nid) {
       $node->book['mlid'] = NULL;
       $node->path = NULL;
       $node->files = array();
-      $node->title = t('Clone of !title', array('!title' => $node->title));
+      $node->title = $node->title;
 
       if (variable_get('clone_reset_'. $node->type, FALSE)) {
         $node_options = variable_get('node_options_'. $node->type, array('status', 'promote'));
