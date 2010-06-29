@@ -164,6 +164,8 @@ function clone_node_save($nid) {
       $node->path = NULL;
       $node->files = array();
       $node->title = $node->title;
+      //Set parent node NID
+      $node->field_parentnode[0]['value'] = $nid;
 
       if (variable_get('clone_reset_'. $node->type, FALSE)) {
         $node_options = variable_get('node_options_'. $node->type, array('status', 'promote'));

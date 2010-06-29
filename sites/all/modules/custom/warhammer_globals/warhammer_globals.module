@@ -1,4 +1,10 @@
 <?php
+define (WARBAND_CREATE_NODE, 0);
+define (WARBAND_SELECT_TYPE, 1);
+define (WARBAND_ADD_UNIT, 2);
+define (WARBAND_VIEW_WARBAND, 3);
+define (WARBAND_FINISH, 4);
+
 function warhammer_globals_theme() {
   return array(
     'render_playfield' => array('arguments' => array('field')),
@@ -21,6 +27,14 @@ function warhammer_globals_menu() {
     'access arguments' => array('access content'),
   );
 
+  $items['warband/wizard/%'] = array(
+    'title' => 'Create a warband',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'warhammer_globals_warband_wizard',
+    'page arguments' => array(2),
+    'access arguments' => array('access content'),
+  );
+
   return $items;
 }
 
@@ -32,7 +46,14 @@ function warhammer_globals_allow_add() {
 }
 
 function warhammer_globals_add_warband($node) {
-  return $node->title . ' added to your warband.';
+  
+  // Check if allowed number of unit exeeds currently owned.
+  
+  // clone the node for the current user.
+   module_load_include('inc', 'clone', 'clone.pages');
+   $new_nid = clone_node_save($node->nid);
+   //echo $new_nid;    
+  return $node->title . ' added to your warband. Created node:' . $new_nid;
 
 }
 
@@ -91,5 +112,80 @@ function theme_render_playfield($field, $style) {
   //foreach($field as $tile) {
     $output .= '<div class="' . $style . '">' . $field . '</div>';
   //}
+  return $output;
+}
+
+function warhammer_globals_create_warband_form($form_state) {
+  $form['title'] = array(
+     '#type' => 'textfield',
+     '#title' => t('Warband title'),
+     '#size' => 50,
+     '#maxlength' => 255,
+     '#description' => t('Enter the name for your warband'),
+   );
+   
+   $data = unserialize(db_result(db_query("SELECT global_settings FROM {content_node_field} WHERE field_name='field_warband'")));
+   $values = explode("\r", $data['allowed_values']);
+   foreach($values as $value) {
+     $option = explode("|", $value);
+     $options[(int)$option[0]] = $option[1];
+   }
+   
+   $form['warband_type'] = array(
+     '#type' => 'select',
+     '#title' => t('Select a warband type'),
+     '#options' => $options,
+     '#description' => t('Warband type.'),
+   );
+      
+   $form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
+     
+  return $form;
+}
+
+function warhammer_globals_create_warband_form_submit($form, &$form_state) {
+
+  global $user;
+  
+  $node->nid = NULL;
+  $node->vid = NULL;
+  $node->type = 'warband';
+  $node->name = $user->name;
+  $node->uid = $user->uid;
+  $node->created = NULL;
+  $node->menu = NULL;
+  $node->book['mlid'] = NULL;
+  $node->path = NULL;
+  $node->files = array();
+  $node->title = $form_state['values']['title'];
+  $node->field_warband[0]['value'] = $form_state['values']['warband_type'];
+  
+  $new_nid = node_save($node);
+  
+  drupal_goto('warband/wizard/' . WARBAND_SELECT_TYPE);
+}
+
+function warhammer_globals_warband_wizard($step) {
+  global $user;
+  
+  switch ($step) {
+    case WARBAND_CREATE_NODE:
+    
+      $output .= drupal_get_form('warhammer_globals_create_warband_form');
+      break;    
+    case WARBAND_SELECT_TYPE:
+      $output = l('Choose units', 'warband/wizard/' . WARBAND_ADD_UNIT);
+      break;
+    case WARBAND_ADD_UNIT:
+      $output = l('Add unit...', 'warband/wizard/' . WARBAND_VIEW_WARBAND);
+      break;
+    case WARBAND_VIEW_WARBAND:
+      $output = l('Choose units', 'warband/wizard/' . WARBAND_ADD_UNIT);
+      $output .= l('Finish', 'warband/wizard/' . WARBAND_FINISH);
+    case WARBAND_FINISH:
+      $output = "DONE";
+      break;
+  }
+  
   return $output;
 }
