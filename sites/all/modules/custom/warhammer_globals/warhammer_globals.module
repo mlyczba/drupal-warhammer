@@ -1,9 +1,8 @@
 <?php
 define (WARBAND_CREATE_NODE, 0);
-define (WARBAND_SELECT_TYPE, 1);
-define (WARBAND_ADD_UNIT, 2);
-define (WARBAND_VIEW_WARBAND, 3);
-define (WARBAND_FINISH, 4);
+define (WARBAND_ADD_UNIT, 1);
+define (WARBAND_VIEW_WARBAND, 2);
+define (WARBAND_FINISH, 3);
 
 function warhammer_globals_theme() {
   return array(
@@ -35,6 +34,13 @@ function warhammer_globals_menu() {
     'access arguments' => array('access content'),
   );
 
+  $items['mywarbands'] = array(
+    'title' => 'My warbands',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'warhammer_globals_mywarbands',
+    'access arguments' => array('access content'),
+  );
+
   return $items;
 }
 
@@ -45,15 +51,20 @@ function warhammer_globals_allow_add() {
   }
 }
 
-function warhammer_globals_add_warband($node) {
+function warhammer_globals_add_warband($node, $warband_nid) {
   
   // Check if allowed number of unit exeeds currently owned.
   
   // clone the node for the current user.
-   module_load_include('inc', 'clone', 'clone.pages');
-   $new_nid = clone_node_save($node->nid);
-   //echo $new_nid;    
-  return $node->title . ' added to your warband. Created node:' . $new_nid;
+  module_load_include('inc', 'clone', 'clone.pages');
+  $new_nid = clone_node_save($node->nid);
+      
+  $node_warband = node_load($warband_nid);
+  $node_warband->field_wuref[]['nid'] = $new_nid;
+  node_save($node_warband);
+
+  drupal_goto('warband/wizard/' . WARBAND_VIEW_WARBAND . '/' . $warband_nid);
+  //return $node->title . ' added to your warband. Created node:' . $new_nid;
 
 }
 
@@ -160,31 +171,122 @@ function warhammer_globals_create_warband_form_submit($form, &$form_state) {
   $node->title = $form_state['values']['title'];
   $node->field_warband[0]['value'] = $form_state['values']['warband_type'];
   
-  $new_nid = node_save($node);
+  node_save($node);
   
-  drupal_goto('warband/wizard/' . WARBAND_SELECT_TYPE);
+  drupal_goto('warband/wizard/' . WARBAND_SELECT_TYPE . '/' . $node->nid);
 }
 
 function warhammer_globals_warband_wizard($step) {
   global $user;
+
+  if (is_numeric(arg(3))) {
+    $nid = arg(3);
+    $node = node_load($nid);
+  }
   
   switch ($step) {
     case WARBAND_CREATE_NODE:
     
       $output .= drupal_get_form('warhammer_globals_create_warband_form');
-      break;    
-    case WARBAND_SELECT_TYPE:
-      $output = l('Choose units', 'warband/wizard/' . WARBAND_ADD_UNIT);
       break;
+      
     case WARBAND_ADD_UNIT:
-      $output = l('Add unit...', 'warband/wizard/' . WARBAND_VIEW_WARBAND);
+      $warband_type = $node->field_warband[0]['value'];
+      $output = warhammer_globals_show_units($warband_type, $nid);
       break;
+      
     case WARBAND_VIEW_WARBAND:
-      $output = l('Choose units', 'warband/wizard/' . WARBAND_ADD_UNIT);
-      $output .= l('Finish', 'warband/wizard/' . WARBAND_FINISH);
+      $output .= warhammer_globals_show_warband($nid);
+      $output .= l('Choose units', 'warband/wizard/' . WARBAND_ADD_UNIT . '/' . $nid) . '<br />';
+      $output .= l('Finish', 'warband/wizard/' . WARBAND_FINISH . '/' . $nid);
+      break;
+      
     case WARBAND_FINISH:
       $output = "DONE";
       break;
+  }
+  
+  return $output;
+}
+
+function warhammer_globals_show_units($warband_type, $warband_nid) {
+  
+  $chartype = array ('1' => 'Leader', '2' => 'Heroes', '3' => 'Henchmen');
+  
+  $sql ="SELECT node.nid AS nid,
+           wu.field_countmin_value AS field_countmin_value,
+           node.type AS node_type,
+           node.vid AS node_vid,
+           wu.field_countmax_value AS field_countmax_value,
+           node.title AS node_title,
+           wu.field_chartype_value AS field_chartype_value,
+           wu.field_cost_value AS field_cost_value,
+           node_revisions.body AS node_revisions_body,
+           node_revisions.format AS node_revisions_format,
+           wu.field_movement_value AS field_movement_value,
+           wu.field_weaponskill_value AS field_weaponskill_value,
+           wu.field_ballisticskill_value AS field_ballisticskill_value,
+           wu.field_strength_value AS field_strength_value,
+           wu.field_toughness_value AS field_toughness_value,
+           wu.field_wounds_value AS field_wounds_value,
+           wu.field_initiative_value AS field_initiative_value,
+           wu.field_attacks_value AS field_attacks_value,
+           wu.field_leadership_value AS field_leadership_value,
+           wu.field_weapons_armour_value AS field_weapons_armour_value,
+           wu.field_specialrules_value AS field_specialrules_value
+         FROM node node 
+         INNER JOIN content_field_warband fw ON node.vid = fw.vid
+         LEFT JOIN content_type_warband_unit wu ON node.vid = wu.vid
+         LEFT JOIN node_revisions node_revisions ON node.vid = node_revisions.vid
+         WHERE (node.type in ('warband_unit')) AND (fw.field_warband_value = %d)";
+  
+  $res = db_query($sql, $warband_type);
+
+  while($rs = db_fetch_object($res)) {
+    $output .= '<h1></h1>';
+    
+    $header = array ('M', 'WS', 'BS', 'S', 'T', 'W', 'I', 'A', 'Ld');
+    $rows[0] = array($rs->field_movement_value,
+      $rs->field_weaponskill_value,
+      $rs->field_ballisticskill_value,
+      $rs->field_strength_value,
+      $rs->field_toughness_value,
+      $rs->field_wounds_value,
+      $rs->field_initiative_value,
+      $rs->field_attacks_value,
+      $rs->field_leadership_value
+    );
+    $output .= '<h1>' . $rs->node_title . '</h1>';
+    $output .= '<strong>' . $rs->field_cost_value . ' gold crowns to hire</strong>';
+    $output .= '<p>' . $rs->node_revisions_body . '</p>';
+    $output .= '<p><strong>' . $chartype[$rs->field_chartype_value] . '</strong></p>';
+    $output .= theme('table', $header, $rows);
+    $output .= '<p><strong>Weapons/Armour:</strong><br />' . $rs->field_weapons_armour_value . '</p>'; 
+    $output .= '<p><strong>Special rules:</strong><br />' . $rs->field_specialrules_value . '</p>'; 
+    $output .= l('Add unit...', 'warband/add/' . $rs->nid . '/' . $warband_nid);
+  }
+  
+  return $output;
+}
+
+function warhammer_globals_show_warband($nid) {
+  $node = node_load($nid);
+  
+  foreach($node->field_wuref as $key => $value) {
+    $node_unit = node_load($value['nid']);
+    $output .= $node_unit->title . '<br/>';
+  }
+  return $output;
+  return print_r($node, true);
+}
+
+function warhammer_globals_mywarbands() {
+  global $user;
+
+  $res = db_query("SELECT * FROM {node} WHERE uid = %d AND type = 'warband'", $user->uid);
+ 
+  while ($rs = db_fetch_object($res)) {
+    $output .= l($rs->title, 'warband/wizard/2/' . $rs->nid) . '<br />';
   }
   
   return $output;
