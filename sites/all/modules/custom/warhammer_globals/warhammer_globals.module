@@ -173,7 +173,7 @@ function warhammer_globals_create_warband_form_submit($form, &$form_state) {
   
   node_save($node);
   
-  drupal_goto('warband/wizard/' . WARBAND_SELECT_TYPE . '/' . $node->nid);
+  drupal_goto('warband/wizard/' . WARBAND_ADD_UNIT . '/' . $node->nid);
 }
 
 function warhammer_globals_warband_wizard($step) {
