@@ -366,3 +366,17 @@ div.admin-panel h3 {
   //border: 0px solid red;
   background-color: red;
 }
+
+table.warband-specs {
+  border: 0px;
+  border-collapse: none !important;
+  margin: 0px;
+}
+
+tr.warband-specs-tr {
+  border: 0px;
+}
+
+td {
+  margin: 20px;
+}

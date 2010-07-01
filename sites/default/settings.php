@@ -89,7 +89,9 @@
  *   $db_url = 'mysqli://username:password@localhost/databasename';
  *   $db_url = 'pgsql://username:password@localhost/databasename';
  */
-$db_url = 'mysqli://root@localhost/warhammer';
+ $db_url = 'mysqli://root@localhost/warhammer';
+//$db_url = 'mysqli://root:visshr1312@192.168.2.125/warhammer';
+//$db_url = 'mysqli://marek_vshaper:visshr1312@atlantis.ecwhost.com/marek_warhammer';
 $db_prefix = '';
 
 /**

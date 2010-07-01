@@ -282,11 +282,14 @@ function warhammer_globals_show_warband($nid) {
 
 function warhammer_globals_mywarbands() {
   global $user;
-
   $res = db_query("SELECT * FROM {node} WHERE uid = %d AND type = 'warband'", $user->uid);
  
   while ($rs = db_fetch_object($res)) {
     $output .= l($rs->title, 'warband/wizard/2/' . $rs->nid) . '<br />';
+  }
+  
+  if(!db_affected_rows()) {
+    $output = 'No warbands defined';
   }
   
   return $output;
