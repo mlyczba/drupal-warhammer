@@ -1,4 +1,7 @@
 <?php
+
+// Test commit 
+
 define (WARBAND_CREATE_NODE, 0);
 define (WARBAND_ADD_UNIT, 1);
 define (WARBAND_VIEW_WARBAND, 2);
